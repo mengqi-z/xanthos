@@ -44,7 +44,7 @@ def streamrouting(L, S0, F0, ChV, q, area, nday, dt, UM):
 
     erlateral = (q * area) / (1e6 * 10**9) / (nday * 24 * 3600)  # q -> erlateral: mm/month to m^3/s
 
-    for t in range(nt):
+    for _ in range(nt):
 
         # compute trial steps for F, S
         F = S * tauinv  # vector dot multiply
@@ -56,14 +56,14 @@ def streamrouting(L, S0, F0, ChV, q, area, nday, dt, UM):
         if Sx.any():
             # For cells with excess flow, let the flow be all the water available:  inbound + lateral + storage.
             # Since dSdt = inbound + lateral - F, we can get the new, adjusted value by adding to dSdt the F
-            #  we calculated above and adding to that S / dt
+            # we calculated above and adding to that S / dt
             F[Sx] = dSdt[Sx] + F[Sx] + S[Sx] * dtinv
 
             # The new F is all the inflow plus all the storage, so the final value of S is zero.
             S[Sx] = 0
 
             # For the rest of the cells, recalculate dSdt using the updated fluxes
-            # (some of them will have changed due to the changes above.
+            # (some of them will have changed due to the changes above.)
             Sxn = np.logical_not(Sx)
             dSdt[Sxn] = (UM.dot(F))[Sxn] + erlateral[Sxn]
             S[Sxn] += dSdt[Sxn] * dt
@@ -226,6 +226,7 @@ def upstream_genmatrix(upid):
     col = jvals[0:ub] - 1
 
     UM = sparse.coo_matrix((data, (row, col)), shape=(N, N)) - sparse.eye(N, dtype=int)
+    UM = UM.tocsc().astype('float64')
 
     return UM
 
