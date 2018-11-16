@@ -201,13 +201,6 @@ def none_none_mrtm(config):
     # instantiate hydro class
     c = Components(config)
 
-    # spin up
-    c.simulation(pet=False,
-                 runoff=False,
-                 routing=True,
-                 routing_num_steps=config.routing_spinup,
-                 routing_step='month',
-                 notify='Spin Up')
     # run model
     c.simulation(pet=False,
                  runoff=False,
@@ -215,6 +208,9 @@ def none_none_mrtm(config):
                  routing_num_steps=config.nmonths,
                  routing_step='month',
                  notify='Simulation')
+
+    # diagnostics
+    c.diagnostics()
 
     # output simulation data
     c.output_simulation()

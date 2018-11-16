@@ -50,13 +50,13 @@ class ConfigReader:
             pt = c['PET']
             self.PET = os.path.join(self.InputFolder, p['pet_dir'])
         except KeyError:
-            pt = False
+            raise ValidationException("PET module must be specified, but config tag [PET] not found.")
 
         try:
             ro = c['Runoff']
             self.RunoffDir = os.path.join(self.InputFolder, p['RunoffDir'])
         except KeyError:
-            ro = False
+            raise ValidationException("Runoff module must be specified, but config tag [Runoff] not found.")
 
         try:
             rt = c['Routing']
@@ -148,257 +148,259 @@ class ConfigReader:
         # -------------------------------------------------------------------
         # -------------------------------------------------------------------
 
-        # PET config
-        if pt:
+        # PET config (PET must be specified)
+        try:
             self.pet_module = pt['pet_module'].lower()
+        except KeyError:
+            raise ValidationException('Configuration variable pet_module is required.')
 
-            if self.pet_module == 'hargreaves':
-                pet_mod = pt['hargreaves']
-                self.pet_dir = os.path.join(self.PET, pt['pet_dir'])
+        if self.pet_module == 'hargreaves':
+            pet_mod = pt['hargreaves']
+            self.pet_dir = os.path.join(self.PET, pt['pet_dir'])
 
-                # climate data
-                try:
-                    self.TemperatureFile = os.path.join(self.pet_dir, pet_mod['TemperatureFile'])
-                except KeyError:
-                    print('File path not provided for the TemperatureFile variable in the PET section of the config file.')
-                    raise
+            # climate data
+            try:
+                self.TemperatureFile = os.path.join(self.pet_dir, pet_mod['TemperatureFile'])
+            except KeyError:
+                print('File path not provided for the TemperatureFile variable in the PET section of the config file.')
+                raise
 
-                try:
-                    self.TempVarName = pet_mod['TempVarName']
-                except KeyError:
-                    self.TempVarName = None
+            try:
+                self.TempVarName = pet_mod['TempVarName']
+            except KeyError:
+                self.TempVarName = None
 
-                try:
-                    self.DailyTemperatureRangeFile = os.path.join(self.pet_dir, pet_mod['DailyTemperatureRangeFile'])
-                except KeyError:
-                    print('File path not provided for the DailyTemperatureRangeFile variable in the PET section of the config file.')
-                    raise
+            try:
+                self.DailyTemperatureRangeFile = os.path.join(self.pet_dir, pet_mod['DailyTemperatureRangeFile'])
+            except KeyError:
+                print('File path not provided for the DailyTemperatureRangeFile variable in the PET section of the config file.')
+                raise
 
-                try:
-                    self.DTRVarName = pet_mod['DTRVarName']
-                except KeyError:
-                    self.DTRVarName = None
+            try:
+                self.DTRVarName = pet_mod['DTRVarName']
+            except KeyError:
+                self.DTRVarName = None
 
-            elif self.pet_module == 'hs':
-                pet_mod = pt['hargreaves-samani']
-                self.pet_dir = os.path.join(self.PET, pet_mod['pet_dir'])
+        elif self.pet_module == 'hs':
+            pet_mod = pt['hargreaves-samani']
+            self.pet_dir = os.path.join(self.PET, pet_mod['pet_dir'])
 
-                # climate data
-                self.hs_tas = os.path.join(self.pet_dir, pet_mod['hs_tas'])
-                self.hs_tmin = os.path.join(self.pet_dir, pet_mod['hs_tmin'])
-                self.hs_tmax = os.path.join(self.pet_dir, pet_mod['hs_tmax'])
+            # climate data
+            self.hs_tas = os.path.join(self.pet_dir, pet_mod['hs_tas'])
+            self.hs_tmin = os.path.join(self.pet_dir, pet_mod['hs_tmin'])
+            self.hs_tmax = os.path.join(self.pet_dir, pet_mod['hs_tmax'])
 
-            elif self.pet_module == 'pm':
-                pet_mod = pt['penman-monteith']
-                self.pet_dir = os.path.join(self.PET, pet_mod['pet_dir'])
+        elif self.pet_module == 'pm':
+            pet_mod = pt['penman-monteith']
+            self.pet_dir = os.path.join(self.PET, pet_mod['pet_dir'])
 
-                # climate data
-                self.pm_tas = os.path.join(self.pet_dir, pet_mod['pm_tas'])
-                self.pm_tmin = os.path.join(self.pet_dir, pet_mod['pm_tmin'])
-                self.pm_rhs = os.path.join(self.pet_dir, pet_mod['pm_rhs'])
-                self.pm_rlds = os.path.join(self.pet_dir, pet_mod['pm_rlds'])
-                self.pm_rsds = os.path.join(self.pet_dir, pet_mod['pm_rsds'])
-                self.pm_wind = os.path.join(self.pet_dir, pet_mod['pm_wind'])
+            # climate data
+            self.pm_tas = os.path.join(self.pet_dir, pet_mod['pm_tas'])
+            self.pm_tmin = os.path.join(self.pet_dir, pet_mod['pm_tmin'])
+            self.pm_rhs = os.path.join(self.pet_dir, pet_mod['pm_rhs'])
+            self.pm_rlds = os.path.join(self.pet_dir, pet_mod['pm_rlds'])
+            self.pm_rsds = os.path.join(self.pet_dir, pet_mod['pm_rsds'])
+            self.pm_wind = os.path.join(self.pet_dir, pet_mod['pm_wind'])
 
-                # land cover data
-                self.pm_lct = os.path.join(self.pet_dir, pet_mod['pm_lct'])
-                self.pm_nlcs = int(pet_mod['pm_nlcs'])
-                self.pm_water_idx = int(pet_mod['pm_water_idx'])
-                self.pm_snow_idx = int(pet_mod['pm_snow_idx'])
-                self.pm_lc_years = [int(i) for i in pet_mod['pm_lc_years']]
+            # land cover data
+            self.pm_lct = os.path.join(self.pet_dir, pet_mod['pm_lct'])
+            self.pm_nlcs = int(pet_mod['pm_nlcs'])
+            self.pm_water_idx = int(pet_mod['pm_water_idx'])
+            self.pm_snow_idx = int(pet_mod['pm_snow_idx'])
+            self.pm_lc_years = [int(i) for i in pet_mod['pm_lc_years']]
 
-                # built-in data
-                self.pm_params = os.path.join(self.pet_dir, 'gcam_ET_para.csv')
-                self.pm_alpha = os.path.join(self.pet_dir, 'gcam_albedo.csv')
-                self.pm_lai = os.path.join(self.pet_dir, 'gcam_lai.csv')
-                self.pm_laimin = os.path.join(self.pet_dir, 'gcam_laimin.csv')
-                self.pm_laimax = os.path.join(self.pet_dir, 'gcam_laimax.csv')
-                self.pm_elev = os.path.join(self.pet_dir, 'elev.npy')
+            # built-in data
+            self.pm_params = os.path.join(self.pet_dir, 'gcam_ET_para.csv')
+            self.pm_alpha = os.path.join(self.pet_dir, 'gcam_albedo.csv')
+            self.pm_lai = os.path.join(self.pet_dir, 'gcam_lai.csv')
+            self.pm_laimin = os.path.join(self.pet_dir, 'gcam_laimin.csv')
+            self.pm_laimax = os.path.join(self.pet_dir, 'gcam_laimax.csv')
+            self.pm_elev = os.path.join(self.pet_dir, 'elev.npy')
 
-            elif self.pet_module == 'thornthwaite':
-                pet_mod = pt['thornthwaite']
-                self.pet_dir = os.path.join(self.PET, pet_mod['pet_dir'])
+        elif self.pet_module == 'thornthwaite':
+            pet_mod = pt['thornthwaite']
+            self.pet_dir = os.path.join(self.PET, pet_mod['pet_dir'])
 
-                # climate data
-                self.trn_tas = os.path.join(self.pet_dir, pet_mod['trn_tas'])
+            # climate data
+            self.trn_tas = os.path.join(self.pet_dir, pet_mod['trn_tas'])
 
-            # -*****************************************************************-
-            # CONDITIONAL FOR NEW PET MODULE
-            #
-            # elif self.pet_module == 'new_module':
-            #     pet_mod = pt['hargreaves-samani']
-            #     self.pet_dir = os.path.join(self.PET, pet_mod['pet_dir'])
-            #
-            #     # climate data
-            #     self.hs_tas = os.path.join(self.pet_dir, pet_mod['hs_tas'])
-            #     self.hs_tmin = os.path.join(self.pet_dir, pet_mod['hs_tmin'])
-            #     self.hs_tmax = os.path.join(self.pet_dir, pet_mod['hs_tmax'])
-            # -*****************************************************************-
+        # -*****************************************************************-
+        # CONDITIONAL FOR NEW PET MODULE
+        #
+        # elif self.pet_module == 'new_module':
+        #     pet_mod = pt['hargreaves-samani']
+        #     self.pet_dir = os.path.join(self.PET, pet_mod['pet_dir'])
+        #
+        #     # climate data
+        #     self.hs_tas = os.path.join(self.pet_dir, pet_mod['hs_tas'])
+        #     self.hs_tmin = os.path.join(self.pet_dir, pet_mod['hs_tmin'])
+        #     self.hs_tmax = os.path.join(self.pet_dir, pet_mod['hs_tmax'])
+        # -*****************************************************************-
 
-            # use your own PET dataset
-            elif self.pet_module == 'none':
-                try:
-                    self.pet_file = pt['pet_file']
-                except KeyError:
-                    raise "USAGE: Must provide a pet_file variable in the PET config section that contains the full path to an input PET file if not using an existing module."
-
-            else:
-                msg = "ERROR: PET module '{0}' not found. Please check spelling and try again.".format(self.pet_module)
-                raise ValidationException(msg)
-        else:
-            self.pet_module = 'none'
-
+        # use your own PET dataset
+        elif self.pet_module == 'none':
             try:
                 self.pet_file = pt['pet_file']
             except KeyError:
-                raise "USAGE: Must provide a pet_file variable in the PET config section that contains the full path to an input PET file if not using an existing module."
+                self.pet_file = None
 
-        # -------------------------------------------------------------------
-        # -------------------------------------------------------------------
-        # CONFIGURE RUNOFF MODULE
-        # -------------------------------------------------------------------
-        # -------------------------------------------------------------------
-        if ro:
-            self.runoff_module = ro['runoff_module'].lower()
-
-            if self.runoff_module == 'gwam':
-
-                ro_mod = ro['GWAM']
-                self.ro_model_dir = os.path.join(self.RunoffDir, ro_mod['runoff_dir'])
-                self.runoff_spinup = int(ro_mod['runoff_spinup'])
-
-                # built in files
-                self.MaxSoilMois = os.path.join(self.ro_model_dir, ro_mod['MaxSoilMois'])
-                self.LakesMSM = os.path.join(self.ro_model_dir, ro_mod['LakesMSM'])
-                self.AdditWaterMSM = os.path.join(self.ro_model_dir, ro_mod['AdditWaterMSM'])
-
-                # channel storage file full path name with extension if running future
-                self.ChStorageFile = None
-                self.ChStorageVarName = None
-
-                # soil moisture file full path name with extension if running future
-                self.SavFile = None
-                self.SavVarName = None
-
-                if self.HistFlag == 'False':
-                    try:
-                        self.ChStorageFile = ro_mod['ChStorageFile']
-                        self.ChStorageVarName = ro_mod['ChStorageVarName']
-                        self.SavFile = ro_mod['SavFile']
-                        self.SavVarName = ro_mod['SavVarName']
-
-                    except KeyError:
-                        raise ValidationException("Error: ChStorageFile and ChStorageVarName are not defined for Future Mode.")
-
-                try:
-                    self.PrecipitationFile = os.path.join(self.ro_model_dir, ro_mod['PrecipitationFile'])
-                except KeyError:
-                    print('File path not provided for the PrecipitationFile variable in the GCAM runoff section of the config file.')
-                    raise
-
-                try:
-                    self.PrecipVarName = ro_mod['PrecipVarName']
-                except KeyError:
-                    self.PrecipVarName = None
-
-                try:
-                    self.TemperatureFile = os.path.join(self.ro_model_dir, ro_mod['TemperatureFile'])
-                except KeyError:
-                    print('File path not provided for the TemperatureFile variable in the GCAM runoff section of the config file.')
-                    raise
-
-                try:
-                    self.TempVarName = ro_mod['TempVarName']
-                except KeyError:
-                    self.TempVarName = None
-
-                try:
-                    self.DailyTemperatureRangeFile = os.path.join(self.ro_model_dir, ro_mod['DailyTemperatureRangeFile'])
-                except KeyError:
-                    print('File path not provided for the DailyTemperatureRangeFile variable in the GCAM runoff section of the config file.')
-                    raise
-
-                try:
-                    self.DTRVarName = ro_mod['DTRVarName']
-                except KeyError:
-                    self.DTRVarName = None
-
-            elif self.runoff_module == 'abcd':
-
-                ro_mod = ro['abcd']
-                self.ro_model_dir = os.path.join(self.RunoffDir, ro_mod['runoff_dir'])
-                self.calib_file = os.path.join(self.ro_model_dir, ro_mod['calib_file'])
-                self.runoff_spinup = int(ro_mod['runoff_spinup'])
-                self.ro_jobs = int(ro_mod['jobs'])
-
-                try:
-                    self.PrecipitationFile = ro_mod['PrecipitationFile']
-                except KeyError:
-                    print('File path not provided for the PrecipitationFile variable in the ABCD runoff section of the config file.')
-                    raise
-
-
-                try:
-                    self.PrecipVarName = ro_mod['PrecipVarName']
-                except KeyError:
-                    self.PrecipVarName = None
-
-                try:
-                    self.TempMinFile = ro_mod['TempMinFile']
-                except KeyError:
-                    self.TempMinFile = None
-
-                try:
-                    self.TempMinVarName = ro_mod['TempMinVarName']
-                except KeyError:
-                    self.TempMinVarName = None
-
-            # -*****************************************************************-
-            # CONDITIONAL FOR NEW RUNOFF MODULE
-            #
-            # elif self.runoff_module == 'new_module':
-            #
-            #     ro_mod = ro['abcd']
-            #     self.ro_model_dir = os.path.join(self.RunoffDir, ro_mod['runoff_dir'])
-            #     self.calib_file = os.path.join(self.ro_model_dir, ro_mod['calib_file'])
-            #     self.runoff_spinup = int(ro_mod['runoff_spinup'])
-            #     self.ro_jobs = int(ro_mod['jobs'])
-            #
-            #     try:
-            #         self.PrecipitationFile = ro_mod['PrecipitationFile']
-            #     except KeyError:
-            #         print('File path not provided for the PrecipitationFile variable in the ABCD runoff section of the config file.')
-            #         raise
-            #
-            #
-            #     try:
-            #         self.PrecipVarName = ro_mod['PrecipVarName']
-            #     except KeyError:
-            #         self.PrecipVarName = None
-            #
-            #     try:
-            #         self.TempMinFile = ro_mod['TempMinFile']
-            #     except KeyError:
-            #         print('File path not provided for the TempMinFile variable in the ABCD runoff section of the config file.')
-            #         raise
-            #
-            #     try:
-            #         self.TempMinVarName = ro_mod['TempMinVarName']
-            #     except KeyError:
-            #         self.TempMinVarName = None
-            # -*****************************************************************-
-
-            elif self.runoff_module == 'none':
-                pass
-
-            else:
-                raise ValidationException("ERROR: Runoff module '{0}' not found. Please check spelling and try again.".format(self.runoff_module))
         else:
-            self.runoff_module = 'none'
+            msg = "ERROR: PET module '{0}' not found. Please check spelling and try again.".format(self.pet_module)
+            raise ValidationException(msg)
 
         # -------------------------------------------------------------------
         # -------------------------------------------------------------------
         # CONFIGURE RUNOFF MODULE
+        # -------------------------------------------------------------------
+        # -------------------------------------------------------------------
+
+        # Runoff config (Runoff must be specified)
+        try:
+            self.runoff_module = ro['runoff_module'].lower()
+        except KeyError:
+            raise ValidationException('Configuration variable runoff_module is required.')
+
+        if self.runoff_module == 'gwam':
+
+            ro_mod = ro['GWAM']
+            self.ro_model_dir = os.path.join(self.RunoffDir, ro_mod['runoff_dir'])
+            self.runoff_spinup = int(ro_mod['runoff_spinup'])
+
+            # built in files
+            self.MaxSoilMois = os.path.join(self.ro_model_dir, ro_mod['MaxSoilMois'])
+            self.LakesMSM = os.path.join(self.ro_model_dir, ro_mod['LakesMSM'])
+            self.AdditWaterMSM = os.path.join(self.ro_model_dir, ro_mod['AdditWaterMSM'])
+
+            # channel storage file full path name with extension if running future
+            self.ChStorageFile = None
+            self.ChStorageVarName = None
+
+            # soil moisture file full path name with extension if running future
+            self.SavFile = None
+            self.SavVarName = None
+
+            if self.HistFlag == 'False':
+                try:
+                    self.ChStorageFile = ro_mod['ChStorageFile']
+                    self.ChStorageVarName = ro_mod['ChStorageVarName']
+                    self.SavFile = ro_mod['SavFile']
+                    self.SavVarName = ro_mod['SavVarName']
+
+                except KeyError:
+                    raise ValidationException(
+                        "Error: ChStorageFile and ChStorageVarName are not defined for Future Mode.")
+
+            try:
+                self.PrecipitationFile = os.path.join(self.ro_model_dir, ro_mod['PrecipitationFile'])
+            except KeyError:
+                print('File path not provided for the PrecipitationFile variable in the GCAM runoff section of the config file.')
+                raise
+
+            try:
+                self.PrecipVarName = ro_mod['PrecipVarName']
+            except KeyError:
+                self.PrecipVarName = None
+
+            try:
+                self.TemperatureFile = os.path.join(self.ro_model_dir, ro_mod['TemperatureFile'])
+            except KeyError:
+                print('File path not provided for the TemperatureFile variable in the GCAM runoff section of the config file.')
+                raise
+
+            try:
+                self.TempVarName = ro_mod['TempVarName']
+            except KeyError:
+                self.TempVarName = None
+
+            try:
+                self.DailyTemperatureRangeFile = os.path.join(
+                    self.ro_model_dir, ro_mod['DailyTemperatureRangeFile'])
+            except KeyError:
+                print('File path not provided for the DailyTemperatureRangeFile variable in the GCAM runoff section of the config file.')
+                raise
+
+            try:
+                self.DTRVarName = ro_mod['DTRVarName']
+            except KeyError:
+                self.DTRVarName = None
+
+        elif self.runoff_module == 'abcd':
+
+            ro_mod = ro['abcd']
+            self.ro_model_dir = os.path.join(self.RunoffDir, ro_mod['runoff_dir'])
+            self.calib_file = os.path.join(self.ro_model_dir, ro_mod['calib_file'])
+            self.runoff_spinup = int(ro_mod['runoff_spinup'])
+            self.ro_jobs = int(ro_mod['jobs'])
+
+            try:
+                self.PrecipitationFile = ro_mod['PrecipitationFile']
+            except KeyError:
+                print('File path not provided for the PrecipitationFile variable in the ABCD runoff section of the config file.')
+                raise
+
+            try:
+                self.PrecipVarName = ro_mod['PrecipVarName']
+            except KeyError:
+                self.PrecipVarName = None
+
+            try:
+                self.TempMinFile = ro_mod['TempMinFile']
+            except KeyError:
+                self.TempMinFile = None
+
+            try:
+                self.TempMinVarName = ro_mod['TempMinVarName']
+            except KeyError:
+                self.TempMinVarName = None
+
+        # -*****************************************************************-
+        # CONDITIONAL FOR NEW RUNOFF MODULE
+        #
+        # elif self.runoff_module == 'new_module':
+        #
+        #     ro_mod = ro['abcd']
+        #     self.ro_model_dir = os.path.join(self.RunoffDir, ro_mod['runoff_dir'])
+        #     self.calib_file = os.path.join(self.ro_model_dir, ro_mod['calib_file'])
+        #     self.runoff_spinup = int(ro_mod['runoff_spinup'])
+        #     self.ro_jobs = int(ro_mod['jobs'])
+        #
+        #     try:
+        #         self.PrecipitationFile = ro_mod['PrecipitationFile']
+        #     except KeyError:
+        #         print('File path not provided for the PrecipitationFile variable in the ABCD runoff section of the config file.')
+        #         raise
+        #
+        #
+        #     try:
+        #         self.PrecipVarName = ro_mod['PrecipVarName']
+        #     except KeyError:
+        #         self.PrecipVarName = None
+        #
+        #     try:
+        #         self.TempMinFile = ro_mod['TempMinFile']
+        #     except KeyError:
+        #         print('File path not provided for the TempMinFile variable in the ABCD runoff section of the config file.')
+        #         raise
+        #
+        #     try:
+        #         self.TempMinVarName = ro_mod['TempMinVarName']
+        #     except KeyError:
+        #         self.TempMinVarName = None
+        # -*****************************************************************-
+
+        elif self.runoff_module == 'none':
+            try:
+                self.runoff_file = ro['runoff_file']
+            except KeyError:
+                raise ValidationException("ERROR: No runoff file or module specified.")
+
+        else:
+            raise ValidationException(
+                "ERROR: Runoff module '{0}' not found. Please check spelling and try again.".format(self.runoff_module))
+
+        # -------------------------------------------------------------------
+        # -------------------------------------------------------------------
+        # CONFIGURE ROUTING MODULE
         # -------------------------------------------------------------------
         # -------------------------------------------------------------------
         if rt:
@@ -418,11 +420,6 @@ class ConfigReader:
                 except KeyError:
                     self.routing_spinup = self.nmonths
 
-                try:
-                    self.alt_runoff = self.custom_runoff(rt_mod['alt_runoff'])
-                except KeyError:
-                    self.alt_runoff = None
-
             # -*****************************************************************-
             # CONDITIONAL FOR NEW ROUTING MODULE
             #
@@ -440,17 +437,14 @@ class ConfigReader:
             #     except KeyError:
             #         self.routing_spinup = self.nmonths
             #
-            #     try:
-            #         self.alt_runoff = self.custom_runoff(rt_mod['alt_runoff'])
-            #     except KeyError:
-            #         self.alt_runoff = None
             # -*****************************************************************-
 
             elif self.routing_module == 'none':
                 pass
 
             else:
-                raise ValidationException("ERROR: Routing module '{0}' not found. Please check spelling and try again.".format(self.routing_module))
+                raise ValidationException(
+                    "ERROR: Routing module '{0}' not found. Please check spelling and try again.".format(self.routing_module))
 
         else:
             self.routing_module = 'none'
@@ -521,7 +515,8 @@ class ConfigReader:
                 self.Env_FlowPercent = float(a['Env_FlowPercent'])
 
                 if (self.StartYear > self.GCAM_StartYear) or (self.EndYear < self.GCAM_EndYear):
-                    raise ValidationException("Accessible water range of GCAM years are outside the range of years in climate data.")
+                    raise ValidationException(
+                        "Accessible water range of GCAM years are outside the range of years in climate data.")
 
         # hydropower potential
         if hp:
@@ -579,7 +574,8 @@ class ConfigReader:
         if set_calib == 0:
 
             if unit not in valid_runoff:
-                raise ValidationException("Calibration data input units '{}' for runoff data not in required units '{}'".format(unit, valid_runoff))
+                raise ValidationException(
+                    "Calibration data input units '{}' for runoff data not in required units '{}'".format(unit, valid_runoff))
 
             else:
                 return unit
@@ -587,7 +583,8 @@ class ConfigReader:
         elif set_calib == 1:
 
             if unit not in valid_streamflow:
-                raise ValidationException("Calibration data input units '{}' for streamflow data not in required units '{}'".format(unit, valid_streamflow))
+                raise ValidationException(
+                    "Calibration data input units '{}' for streamflow data not in required units '{}'".format(unit, valid_streamflow))
 
             else:
                 return unit
@@ -597,22 +594,10 @@ class ConfigReader:
         Check to see if the target year is within the bounds of the data.
         """
         if (yr < self.StartYear) or (yr > self.EndYear):
-            raise ValidationException("Accessible water year {0} is outside the range of years in the climate data.".format(yr))
+            raise ValidationException(
+                "Accessible water year {0} is outside the range of years in the climate data.".format(yr))
         else:
             return yr
-
-    def custom_runoff(self, f):
-        """
-        Check for custom runoff file name.  If 'none', return None; else
-        return full path to file.
-
-        :param f:
-        :return:
-        """
-        if f == 'none':
-            return None
-        else:
-            return os.path.join(self.rt_model_dir, f)
 
     @staticmethod
     def create_dir(pth):

@@ -115,7 +115,10 @@ class LoadData:
 
         elif self.s.pet_module == 'none':
             # load user supplied PET data
-            self.pet_out = self.load_to_array(self.s.pet_file)
+            if self.s.pet_file:
+                self.pet_out = self.load_to_array(self.s.pet_file)
+            else:
+                self.pet_out = None
 
         # get data for the runoff module selected
         if self.s.runoff_module == 'gwam':
@@ -134,7 +137,11 @@ class LoadData:
             else:
                 self.tmin = self.load_to_array(self.s.TempMinFile, varname=self.s.TempMinVarName)
 
-        # Area value for each land grid cell: 67420 x 1, convert from ha to km2
+        elif self.s.runoff_module == 'none':
+            # load user-supplied runoff data
+            self.s.runoff_file = self.load_to_array(self.s.runoff_file)
+
+            # Area value for each land grid cell: 67420 x 1, convert from ha to km2
         self.area = self.load_data(self.s.Area) * 0.01
 
         # Coordinates for flattened grid:  67420 x 5, the columns are ID#, lon, lat, ilon, ilat
@@ -542,8 +549,10 @@ def check_climate_data(data, n_cells, n_months, text):
     :param n_months:        number of months
     :param text:            name of target variable
     """
-    err_cell = "Error: Inconsistent {0} data grid size. Expecting size: {1}. Received size: {2}".format(text, n_cells, data.shape[0])
-    err_mth = "Error: Inconsistent {0} data grid size. Expecting size: {1}. Received size: {2}".format(text, n_months, data.shape[1])
+    err_cell = "Error: Inconsistent {0} data grid size. Expecting size: {1}. Received size: {2}".format(
+        text, n_cells, data.shape[0])
+    err_mth = "Error: Inconsistent {0} data grid size. Expecting size: {1}. Received size: {2}".format(
+        text, n_months, data.shape[1])
 
     if not data.shape[0] == n_cells:
         raise ValidationException(err_cell)

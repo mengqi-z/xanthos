@@ -245,10 +245,9 @@ class Components:
             self.PET, self.AET, self.Q, self.Sav = rg
 
         else:
-
             # if user is providing a custom runoff file
-            if self.s.alt_runoff is not None:
-                self.Q = np.load(self.s.alt_runoff)
+            if self.s.runoff_file is not None:
+                self.Q = self.s.runoff_file
 
     def calculate_routing(self, runoff):
         """
@@ -259,45 +258,52 @@ class Components:
                                     Avg_ChFlow    : Average streamflow (m3/s)
                                     instream_flow : Streamflow (m3/s)
         """
-        if self.s.routing_module == 'mrtm':
+        if self.s.routing_module != 'mrtm':
+            return
 
-            # load routing data
-            self.flow_dist = fetch.load_routing_data(self.s.FlowDis, self.s.ngridrow, self.s.ngridcol,
-                                                     self.map_index, rep_val=1000)
-            self.flow_dir = fetch.load_routing_data(self.s.FlowDir, self.s.ngridrow, self.s.ngridcol, self.map_index)
-            self.instream_flow = np.zeros((self.s.ncell,), dtype=float)
-            self.str_velocity = fetch.load_routing_data(self.s.strm_veloc, self.s.ngridrow, self.s.ngridcol,
-                                                        self.map_index, rep_val=0)
-            self.dsid = routing_mod.downstream(self.data.coords, self.flow_dir, self.s)
-            self.upid = routing_mod.upstream(self.data.coords, self.dsid, self.s)
-            self.um = routing_mod.upstream_genmatrix(self.upid)
-            self.chs_prev = fetch.load_chs_data(self.s)
+        # load routing data
+        self.flow_dist = fetch.load_routing_data(self.s.FlowDis, self.s.ngridrow, self.s.ngridcol,
+                                                 self.map_index, rep_val=1000)
+        self.flow_dir = fetch.load_routing_data(self.s.FlowDir, self.s.ngridrow, self.s.ngridcol, self.map_index)
+        self.instream_flow = np.zeros((self.s.ncell,), dtype=float)
+        self.str_velocity = fetch.load_routing_data(self.s.strm_veloc, self.s.ngridrow, self.s.ngridcol,
+                                                    self.map_index, rep_val=0)
+        self.dsid = routing_mod.downstream(self.data.coords, self.flow_dir, self.s)
+        self.upid = routing_mod.upstream(self.data.coords, self.dsid, self.s)
+        self.um = routing_mod.upstream_genmatrix(self.upid)
+        self.chs_prev = fetch.load_chs_data(self.s)
 
-            # process spin up for channel storage from historic period
-            for nm in range(0, self.s.routing_spinup, 1):
+        # process spin up for channel storage from historic period
+        # for month in range(self.s.routing_spinup):
+        print 'Month: ',
+        for month in range(10):
+            print month,
+            sr = routing_mod.streamrouting(self.flow_dist, self.chs_prev, self.instream_flow, self.str_velocity,
+                                           runoff[:, month], self.data.area, self.yr_imth_dys[month, 2],
+                                           self.routing_timestep_hours, self.um)
 
-                sr = routing_mod.streamrouting(self.flow_dist, self.chs_prev, self.instream_flow, self.str_velocity,
-                                               runoff[:, nm], self.data.area, self.yr_imth_dys[nm, 2],
-                                               self.routing_timestep_hours, self.um)
+            self.ChStorage[:, month], self.Avg_ChFlow[:, month], self.instream_flow = sr
 
-                self.ChStorage[:, nm], self.Avg_ChFlow[:, nm], self.instream_flow = sr
+            # update channel storage (chs) arrays for next step
+            self.chs_prev = np.copy(self.ChStorage[:, month])
 
-                # update channel storage (chs) arrays for next step
-                self.chs_prev = np.copy(self.ChStorage[:, nm])
+        print "done"
+        np.save('/Users/brau074/Desktop/test2.npy', self.chs_prev)
+        import sys
+        sys.exit()
+        # run routing simulation
+        for month in range(self.s.nmonths):
+            # channel storage, avg. channel flow (m^3/sec), instantaneous channel flow (m^3/sec)
+            sr = routing_mod.streamrouting(self.flow_dist, self.chs_prev, self.instream_flow, self.str_velocity,
+                                           runoff[:, month], self.data.area, self.yr_imth_dys[month, 2],
+                                           self.routing_timestep_hours, self.um)
 
-            # run routing simumlation
-            for nm in range(self.s.nmonths):
-                # channel storage, avg. channel flow (m^3/sec), instantaneous channel flow (m^3/sec)
-                sr = routing_mod.streamrouting(self.flow_dist, self.chs_prev, self.instream_flow, self.str_velocity,
-                                               runoff[:, nm], self.data.area, self.yr_imth_dys[nm, 2],
-                                               self.routing_timestep_hours, self.um)
+            self.ChStorage[:, month], self.Avg_ChFlow[:, month], self.instream_flow = sr
 
-                self.ChStorage[:, nm], self.Avg_ChFlow[:, nm], self.instream_flow = sr
+            # update channel storage (chs) arrays for next step
+            self.chs_prev = np.copy(self.ChStorage[:, month])
 
-                # update channel storage (chs) arrays for next step
-                self.chs_prev = np.copy(self.ChStorage[:, nm])
-
-            return self.Avg_ChFlow
+        return self.Avg_ChFlow
 
     def simulation(self, pet=True, pet_num_steps=0, pet_step='month',
                    runoff=True, runoff_num_steps=0, runoff_step='month',
@@ -358,7 +364,7 @@ class Components:
 
                     # for the case where the user provides a PET dataset
                     else:
-                        # load user provided data
+                        # load user-provided data
                         self.calculate_pet()
 
                     if runoff:
@@ -367,15 +373,17 @@ class Components:
                         t = time.time()
 
                         for nm in range(runoff_num_steps):
-
                             # calculate runoff and generate monthly potential ET, actual ET, runoff, and soil moisture
-                            if runoff:
-                                self.calculate_runoff(nm)
+                            self.calculate_runoff(nm)
 
-                                # update soil moisture (sav) array for next step
-                                self.sm_prev = np.copy(self.Sav[:, nm])
+                            # update soil moisture (sav) array for next step
+                            self.sm_prev = np.copy(self.Sav[:, nm])
 
                         print("\tRunoff processed in {} seconds---".format(time.time() - t))
+
+                    # for the case where the user provides a runoff dataset
+                    else:
+                        self.calculate_runoff()
 
                     # channel storage, avg. channel flow (m^3/sec), instantaneous channel flow (m^3/sec)
                     if routing:
@@ -476,6 +484,8 @@ class Components:
                         self.calculate_runoff(pet=pet_out)
 
                         print("\tRunoff processed in {} seconds---".format(time.time() - t))
+                    else:
+                        self.calculate_runoff()
 
                     # process routing
                     if routing:
